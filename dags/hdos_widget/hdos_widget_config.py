@@ -1,10 +1,19 @@
 import json
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
 CONFIG_FILE_ENV = "FOXAI_CONFIG_FILE"
 DEFAULT_CONFIG_FILE = Path(__file__).with_suffix(".json")
+
+
+@dataclass(frozen=True)
+class SourceConfig:
+    name: str
+    schema: str
+    primary_key: str
+    query: str
 
 
 def _load_config() -> dict[str, Any]:
@@ -41,6 +50,25 @@ def get_config(key: str, env_name: str | None = None) -> str:
     return str(value)
 
 
+def get_sources() -> list[SourceConfig]:
+    raw_sources = _CONFIG.get("SOURCES")
+    if not isinstance(raw_sources, list) or not raw_sources:
+        raise ValueError("Config SOURCES must be a non-empty list")
+
+    sources: list[SourceConfig] = []
+    for raw_source in raw_sources:
+        if not isinstance(raw_source, dict):
+            raise ValueError(f"Source config must be an object: {raw_source!r}")
+        name = str(raw_source.get("name", "")).strip()
+        schema = str(raw_source.get("schema", "")).strip()
+        primary_key = str(raw_source.get("primary_key", "")).strip()
+        query = str(raw_source.get("query", "")).strip()
+        if not name or not schema or not primary_key or not query:
+            raise ValueError(f"Source config is missing name/schema/primary_key/query: {raw_source!r}")
+        sources.append(SourceConfig(name=name, schema=schema, primary_key=primary_key, query=query))
+    return sources
+
+
 MINIO_ENDPOINT: Final[str] = get_config("MINIO_ENDPOINT")
 MINIO_ACCESS_KEY: Final[str] = get_config("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY: Final[str] = get_config("MINIO_SECRET_KEY")
@@ -55,9 +83,8 @@ PG_PORT: Final[str] = get_config("PG_PORT")
 PG_DATABASE: Final[str] = get_config("PG_DATABASE")
 PG_USER: Final[str] = get_config("PG_USER")
 PG_PASSWORD: Final[str] = get_config("PG_PASSWORD")
-PG_SOURCE_SCHEMA: Final[str] = get_config("PG_SOURCE_SCHEMA")
-PG_SOURCE_TABLE: Final[str] = get_config("PG_SOURCE_TABLE")
 RAW_NAMESPACE: Final[str] = get_config("RAW_NAMESPACE")
 BRONZE_NAMESPACE: Final[str] = get_config("BRONZE_NAMESPACE")
 SILVER_NAMESPACE: Final[str] = get_config("SILVER_NAMESPACE")
 GOLD_NAMESPACE: Final[str] = get_config("GOLD_NAMESPACE")
+SOURCES: Final[list[SourceConfig]] = get_sources()

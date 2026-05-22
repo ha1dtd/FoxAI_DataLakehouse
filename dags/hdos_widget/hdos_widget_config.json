@@ -1,0 +1,64 @@
+{
+  "MINIO_ENDPOINT": "http://192.168.100.66:9001",
+  "MINIO_ACCESS_KEY": "admin",
+  "MINIO_SECRET_KEY": "12345678",
+  "SPARK_SUBMIT_BIN": "/opt/spark/bin/spark-submit",
+  "SCRIPT_BASE": "/home/ubuntu/daihai_script/hdos_widget",
+  "RAW_WAREHOUSE": "s3a://raw/lakehouse/",
+  "BRONZE_WAREHOUSE": "s3a://bronze/lakehouse/",
+  "SILVER_WAREHOUSE": "s3a://silver/lakehouse/",
+  "GOLD_WAREHOUSE": "s3a://gold/lakehouse/",
+  "PG_HOST": "192.168.100.78",
+  "PG_PORT": "5630",
+  "PG_DATABASE": "test05052026",
+  "PG_USER": "postgres",
+  "PG_PASSWORD": "",
+  "RAW_NAMESPACE": "hdos_widget",
+  "BRONZE_NAMESPACE": "hdos_widget",
+  "SILVER_NAMESPACE": "hdos_widget",
+  "GOLD_NAMESPACE": "hdos_widget",
+  "SOURCES": [
+    {
+      "name": "tb_patientrecord",
+      "schema": "public",
+      "primary_key": "patientrecordid",
+      "query": "SELECT patientrecordid, patientrecordid_vp, patientid, patientcode, patientname, patientrecorddate, receptiondate, medicalrecordid_in, medicalrecorddate_in, medicalrecordid_out, medicalrecorddate_out, departmentid, roomid, bedid_out, chamberid_out, dm_receptionobjectid, dm_patientobjectid, dm_patientrecordtypeid, dm_patientrecordstatusid, dm_medicalrecordtypeid_in, dm_medicalrecordstatusid_out, dm_bhyt_loaiid, dm_ketquadieutriid, dm_hinhthucravienid, chandoan_kb_main_icd10, chandoan_in_icd10, chandoan_out_main_icd10, chandoan_kb_ex_icd10, chandoan_in_icd10_kemtheo, chandoan_out_ex_icd10, insurancecode, tongchiphi, tongbhyt, tongbenhnhan, tongdathu FROM public.tb_patientrecord ORDER BY patientrecordid LIMIT 1000"
+    },
+    {
+      "name": "tb_invoice",
+      "schema": "public",
+      "primary_key": "invoiceid",
+      "query": "SELECT i.invoiceid, i.patientrecordid, i.invoicedate, i.departmentid, i.roomid, i.sotienphieu, i.sotienmiengiam, i.dm_invoice_typeid, i.dm_invoice_hinhthucid, i.dm_invoice_typedetailid, i.dm_nhomthanhtoanid, i.dm_vienphi_nguonthanhtoanid, i.dm_patientrecordtypeid FROM public.tb_invoice i JOIN (SELECT patientrecordid FROM public.tb_patientrecord ORDER BY patientrecordid LIMIT 1000) p ON i.patientrecordid = p.patientrecordid"
+    },
+    {
+      "name": "tb_treatment",
+      "schema": "public",
+      "primary_key": "treatmentid",
+      "query": "SELECT t.treatmentid, t.patientrecordid, t.patientid, t.treatmentdate, t.departmentid, t.roomid, t.iscapcuu, t.dm_treatmenttypeid, t.dm_treatmentstatusid, t.checkin_time, t.checkin_status, t.end_treatmentdate, t.chandoan_icd10, t.chandoan, t.thongtincanhbaoxn FROM public.tb_treatment t JOIN (SELECT patientrecordid FROM public.tb_patientrecord ORDER BY patientrecordid LIMIT 1000) p ON t.patientrecordid = p.patientrecordid"
+    },
+    {
+      "name": "tb_bed",
+      "schema": "public",
+      "primary_key": "bedid",
+      "query": "SELECT bedid, roomid, chamberid, hospitalunitid, departmentid, bedcode, bedname, beddisable, dm_bedtypeid, listmedicalrecordid, isgiuongngoaikhoa FROM public.tb_bed"
+    },
+    {
+      "name": "tb_department",
+      "schema": "public",
+      "primary_key": "departmentid",
+      "query": "SELECT departmentid, hospitalunitid, departmentcode, departmentname, dm_departmenttypeid, departmentdisable, sogiuongkehoach, sogiuongthucke, departmentorder FROM public.tb_department"
+    },
+    {
+      "name": "tb_phacdodieutri",
+      "schema": "public",
+      "primary_key": "phacdodieutriid",
+      "query": "SELECT phacdodieutriid, maphacdo, tenphacdo, ghichu, listmabenhicd10, dm_phacdogroupid, songaydieutri, version FROM public.tb_phacdodieutri"
+    },
+    {
+      "name": "tb_phacdodieutri_phieudieutri",
+      "schema": "public",
+      "primary_key": "phacdodieutri_phieudieutriid",
+      "query": "SELECT phacdodieutri_phieudieutriid, phacdodieutriid, ngaydieutriphacdo, chedoanuong, chedochamsoc, huongxuly, ghichuphacdo, version FROM public.tb_phacdodieutri_phieudieutri"
+    }
+  ]
+}

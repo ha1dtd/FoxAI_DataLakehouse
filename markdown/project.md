@@ -20,6 +20,7 @@ Not a rule file. Rules live in the separate rules.md.
   - optional login/config values should support blank input falling back to defaults
 - Current implementation checkpoint:
   - unified installer entrypoint now exists at `scripts/foxai_installer.sh`
+  - first native Go installer source now exists at `scripts/foxai_installer.go`
   - premise-specific notes now exist at `scripts/foxai_installer_premise_notes.md`
   - source-of-truth setup logic remains `scripts/setup_namenode_v5.sh` and `scripts/setup_datanode.sh`
 - Current packaging boundary:
@@ -32,10 +33,13 @@ Not a rule file. Rules live in the separate rules.md.
 - Customer script/template or extension path after platform installation
 - Licensing is intentionally sequenced after packaging and customer-path work
 - Combined-domain medallion pipeline safe-hardening pass is temporarily on hold
+- HDOS hospital-facing sample refactor is deployed and user-confirmed working on `tb_patientrecord` with a deterministic 1000-row development slice
+- A separate local `hdos_widget` DAG workspace now exists for the executive-dashboard widgets without disturbing the validated `hdos_sample` DAG
 
 ### Open items
 
 - Validate `scripts/foxai_installer.sh` in a real environment against the current tested two-script flow
+- Audit and harden `scripts/foxai_installer.go` against the tested shell flow before building the customer-facing Linux binary
 - Confirm the installer does not lose any required step from:
   - `scripts/setup_namenode_v5.sh`
   - `scripts/setup_datanode.sh`
@@ -51,6 +55,11 @@ Not a rule file. Rules live in the separate rules.md.
   - simple license check / permission gate
   - no UI in the current phase
 - PostgreSQL serving-layer integration via Spark / Thrift / JDBC
+- Validate targeted replay on the deployed `hdos_widget` DAG:
+  - source extracts: `tb_patientrecord`, `tb_invoice`, `tb_treatment`, `tb_bed`, `tb_department`, `tb_phacdodieutri`, `tb_phacdodieutri_phieudieutri`
+  - Gold tasks branch from `bronze_to_silver` as replayable same-level Airflow tasks
+  - current widget outputs: encounter activity, finance classification, inpatient summary, bed occupancy, clinical pathway
+  - current observed runtime behavior: Gold tasks executed sequentially in the environment even though the DAG shape allows sibling replay
 - Reproducible realtime streaming baseline metrics
 
 ---

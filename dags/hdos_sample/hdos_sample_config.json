@@ -14,9 +14,11 @@
   "PG_USER": "postgres",
   "PG_PASSWORD": "",
   "PG_SOURCE_SCHEMA": "public",
-  "PG_SOURCE_TABLE": "tb_nhanvienlog",
-  "RAW_NAMESPACE": "hdos_sample",
-  "BRONZE_NAMESPACE": "hdos_sample",
-  "SILVER_NAMESPACE": "hdos_sample",
-  "GOLD_NAMESPACE": "hdos_sample"
+  "PG_SOURCE_TABLE": "tb_patientrecord",
+  "PG_SOURCE_QUERY": "SELECT * FROM public.tb_patientrecord ORDER BY patientrecordid LIMIT 1000",
+  "PG_SOURCE_PRIMARY_KEY": "patientrecordid",
+  "RAW_NAMESPACE": "hdos",
+  "BRONZE_NAMESPACE": "hdos",
+  "SILVER_NAMESPACE": "hdos",
+  "GOLD_NAMESPACE": "hdos"
 }

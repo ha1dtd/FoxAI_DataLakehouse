@@ -54,16 +54,18 @@ None while on hold. If resumed later, continue with Fix 4 (explicit failure-cont
 
 **Goal:** Productize the platform bootstrap from `setup_namenode_v5.sh` and `setup_datanode.sh` first, then define the customer script/template/extension path on top of that installed platform, with licensing handled afterward as a separate later phase.
 
-**Mode:** Hotfix currently active for task-memory clarification and packaging-first sequencing
+**Mode:** Refactor
 
-**Current Phase:** On hold by user as of 2026-05-20 after the unified shell installer draft. Resume later from `scripts/foxai_installer.sh` if packaging work is restarted.
+**Current Phase:** Resumed on 2026-05-21. A first native Linux Go installer source now exists at `scripts/foxai_installer.go` while `scripts/foxai_installer.sh` remains the behavioral reference path. The Go version mirrors the current combined NameNode/DataNode flow at a high level and adds an end-of-run hardware collection prompt for Spark recommendation output.
 
 **Next Exact Step:** Exercise and harden `scripts/foxai_installer.sh` against the current tested deployment flow:
-1. validate the unified prompt flow against the source scripts
-2. verify the automatic remote datanode execution path in a real environment
-3. confirm no required setup step from the old manual two-script flow was lost
-4. identify what would still be needed if this installer is later wrapped as a stricter binary artifact
-Keep the installer modular internally so later packaging/binary work can scale to more services and premise-specific overrides.
+1. Audit `scripts/foxai_installer.go` step-by-step against `scripts/setup_namenode_v5.sh` and `scripts/setup_datanode.sh`
+2. Close any remaining parity gaps before treating the Go path as the customer-facing installer
+3. Validate the new end-of-run hardware prompt flow:
+   - option 1: auto probe hardware
+   - option 2: manual entry
+   - print recommended Spark defaults only, without editing DAG/job configs
+4. Later, build a stripped Linux binary from the Go source for customer delivery after parity and runtime validation are complete
 
 **Files In Scope**
 
@@ -85,6 +87,20 @@ Keep the installer modular internally so later packaging/binary work can scale t
   - status: in progress | verified: local
   - new single-file terminal installer entrypoint
   - combines the current tested NameNode flow and automatic remote DataNode execution into one executable shell installer
+
+- `scripts/foxai_installer.go`
+  - status: new | verified: local compile
+  - first native Linux Go installer source for the packaging track
+  - preserves the one-file interactive installer shape
+  - includes:
+    - NameNode + remote DataNode orchestration
+    - pinned Java/Hadoop/Spark constants
+    - dynamic worker/hosts/replication generation from entered DataNode count
+    - end-of-run hardware prompt with `auto probe` vs `manual entry`
+    - printed Spark recommendations without mutating DAG/job configs
+    - safe test modes:
+      - `--dry-run` prints the planned NameNode/DataNode execution flow only
+      - `--recommend-only` skips install steps and runs only the hardware/Spark recommendation flow
 
 - `scripts/foxai_installer_premise_notes.md`
   - status: present | verified: local
@@ -112,12 +128,17 @@ Keep the installer modular internally so later packaging/binary work can scale t
 - The desired customer-facing shape is now one file only, likely packaged later as a binary, but still terminal-based and interactive.
 - Optional credentials/settings should support `blank => default` behavior where current scripts already provide defaults.
 - A real unified installer entrypoint now exists at `scripts/foxai_installer.sh`.
+- A first native Go installer source now also exists at `scripts/foxai_installer.go`.
 - Current installer behavior:
   - one combined terminal prompt flow
   - exact pinned Hadoop/Spark/Java versions from the current setup scripts
   - current MinIO defaults with blank-input fallback
   - optional Kakao mirror override kept explicit as a premise-specific choice
   - local NameNode setup followed by automatic remote DataNode setup
+- Current Go installer direction:
+  - customer-facing path is intended to become a single Linux binary so customers do not receive readable shell source
+  - `foxai_installer.go` currently uses local/remote command orchestration to mirror the tested shell behavior
+  - after cluster setup completes, it prompts for hardware collection mode and prints recommended Spark settings
 - The old plan-only prototype file was removed so `scripts/foxai_installer.sh` is the active single truth file for this packaging task.
 
 **Risks**
@@ -128,8 +149,172 @@ Keep the installer modular internally so later packaging/binary work can scale t
 - Licensing should stay generic and remain a later phase until packaging/customer-path work is clearer.
 - Some logic in the source scripts is premise-specific, such as the Kakao apt mirror override, and should remain visible/extensible rather than hidden inside one monolithic flow.
 - The unified installer now executes the intended orchestration shape on paper, but it still needs real-environment validation before it can be called production-ready.
-- The current deliverable is one executable installer file, but it is still a shell installer, not yet a wrapped compiled binary artifact.
+- The Go installer is not yet parity-validated against the full tested shell flow, so it is not ready to replace the shell reference path yet.
+- The current safe test path on a live cluster is to use `--dry-run` or `--recommend-only`, not the full install mode.
+- The current customer-delivery intent is a stripped Linux binary built from Go, but the binary packaging and runtime validation steps have not been completed yet.
 - This task is temporarily paused while focus shifts to PostgreSQL pipeline integration questions.
+
+---
+
+### Task 6 — HDOS PatientRecord Hospital-Facing Refactor
+
+**Goal:** Replace the `tb_nhanvienlog` technical demo logic in `hdos_sample` with a hospital-facing `tb_patientrecord` medallion flow that can handle a wide production-style schema while keeping MinIO + Iceberg and the existing Airflow DAG shape.
+
+**Mode:** Refactor
+
+**Current Phase:** `hdos_sample` remains deployed to namenode and runtime-validated by the user on 2026-05-21. The separate widget-focused DAG `hdos_widget` is also deployed to namenode on 2026-05-21, registered in Airflow, and user-confirmed working.
+
+**Next Exact Step:**
+1. Replay one Gold task by clearing only that task, confirming other Gold task outputs are untouched
+2. Decide whether to keep the current single parameterized Gold script or split it into separate physical Gold files for operational clarity
+3. Treat `Xe cấp cứu 115` / `Xe 115 hoạt động` and exact population-health registry parity as separate discovery tasks, because exact populated source tables are still unconfirmed or empty in the current demo database
+4. If JDBC/Spark later fails on PostgreSQL-native columns in broader runs (especially `bytea` / `tsvector`), patch the relevant configured source query with compatibility casts
+
+**Files In Scope**
+
+- `dags/hdos_sample/hdos_sample_config.json`
+  - status: updated | verified: local
+  - source table switched to `tb_patientrecord`
+  - deterministic dev query now set to `SELECT * FROM public.tb_patientrecord ORDER BY patientrecordid LIMIT 1000`
+  - primary key config now set to `patientrecordid`
+
+- `dags/hdos_sample/hdos_sample_config.py`
+  - status: updated | verified: local
+  - now exposes `PG_SOURCE_QUERY` and `PG_SOURCE_PRIMARY_KEY`
+
+- `dags/hdos_sample/postgres_to_raw.py`
+  - status: updated | verified: local syntax
+  - now supports `query` vs `dbtable` source read mode from config
+  - validates configured primary key existence
+  - logs source mode, source label, row count, and column count
+
+- `dags/hdos_sample/raw_to_bronze.py`
+  - status: updated | verified: local syntax
+  - old login-specific narrow projection removed
+  - now preserves the full raw table shape into Bronze with metadata columns retained
+
+- `dags/hdos_sample/bronze_to_silver.py`
+  - status: updated | verified: local syntax
+  - old login-specific Silver model removed
+  - now keeps the wide table, trims all string columns, drops duplicate `patientrecordid`, and adds helper columns such as:
+    - `encounter_date`
+    - `reception_date`
+    - `admission_date`
+    - `discharge_date`
+    - `insurance_start_date`
+    - `insurance_end_date`
+    - `primary_diagnosis_icd10`
+    - `secondary_diagnosis_icd10`
+    - `has_insurance_code`
+    - `is_bhyt_covered`
+
+- `dags/hdos_sample/silver_to_gold.py`
+  - status: updated | verified: local syntax
+  - old login/domain summary removed
+  - now writes multiple hospital-topic Gold tables:
+    - `gold_catalog.hdos.tb_patientrecord_daily_financial_summary`
+    - `gold_catalog.hdos.tb_patientrecord_daily_diagnosis_summary`
+    - `gold_catalog.hdos.tb_patientrecord_daily_coverage_summary`
+    - `gold_catalog.hdos.tb_patientrecord_daily_discharge_summary`
+
+- `dags/hdos_widget/`
+  - status: deployed to namenode | verified: local syntax + source SQL checks + Airflow registration
+  - copied from `hdos_sample` and refactored as a separate DAG id `hdos_widget`
+  - uses a separate config module `hdos_widget_config.py` and config file `hdos_widget_config.json`
+  - ingests seven widget source extracts:
+    - `tb_patientrecord`
+    - `tb_invoice`
+    - `tb_treatment`
+    - `tb_bed`
+    - `tb_department`
+    - `tb_phacdodieutri`
+    - `tb_phacdodieutri_phieudieutri`
+  - current Airflow shape:
+    - `postgres_to_raw >> raw_to_bronze >> bronze_to_silver`
+    - five same-level Gold tasks branch from `bronze_to_silver`:
+      - `gold_encounter_activity`
+      - `gold_finance_classification`
+      - `gold_inpatient_summary`
+      - `gold_bed_occupancy`
+      - `gold_clinical_pathway`
+  - deployed remote paths:
+    - runtime: `/home/ubuntu/daihai_script/hdos_widget/`
+    - DAG: `/home/ubuntu/airflow/dags/hdos_widget.py`
+
+**Current On-Disk Truth**
+
+- The local refactor now targets `public.tb_patientrecord`, not `public.tb_nhanvienlog`.
+- Deployment verification completed on namenode:
+  - runtime files pushed to `/home/ubuntu/daihai_script/hdos_sample/`
+  - DAG pushed to `/home/ubuntu/airflow/dags/hdos_sample.py`
+  - local and remote `sha256` matched for:
+    - `hdos_sample_config.json`
+    - `hdos_sample_config.py`
+    - `postgres_to_raw.py`
+    - `raw_to_bronze.py`
+    - `bronze_to_silver.py`
+    - `silver_to_gold.py`
+    - `hdos_sample.py`
+  - stale remote files removed:
+    - `/home/ubuntu/daihai_script/hdos_sample/foxai_config.json`
+    - `/home/ubuntu/daihai_script/hdos_sample/foxai_config.py`
+  - Airflow CLI check passed:
+    - `/home/ubuntu/airflow-venv/bin/airflow dags list | grep hdos_sample`
+  - Airflow import error check now returns `No data found`
+  - user confirmed on `2026-05-21` that the deployed DAG worked
+- Verified source signals from namenode / PostgreSQL during this refactor:
+  - total rows: `763,887`
+  - distinct `patientrecordid`: `763,887`
+  - distinct `patientid`: `316,233`
+  - null `patientrecorddate`: `0`
+  - null `patientname`: `0`
+  - null `tongchiphi`: `0`
+- Confirmed source schema profile:
+  - `434` columns total
+  - `181` integer
+  - `169` text
+  - `49` double precision
+  - `27` timestamp without time zone
+  - `4` bytea
+  - `3` boolean
+  - `1` tsvector
+- Confirmed sample row fields are hospital-meaningful, including identifiers, encounter dates, department/room, ICD10 diagnosis fields, insurance code, and cost/coverage amounts.
+- The Airflow DAG file `dags/hdos_sample/hdos_sample.py` was not changed in this pass because the task wiring still matches the same four-stage flow.
+- Source coverage for the HDOS executive dashboard has now been documented in `dags/hdos_sample/HDOS_SOURCE_FINDINGS.md`:
+  - exact / strong coverage confirmed for encounter activity, revenue, inpatient counts, BOR, and bed occupancy inputs
+  - derivable coverage confirmed for finance classification and clinical pathway
+  - partial-only coverage for alerts and population health in the current demo data
+  - `Xe cấp cứu 115` / `Xe 115 hoạt động` remain unconfirmed from an exact populated source table
+- Local validation for the new `hdos_widget` source extracts:
+  - `tb_patientrecord` configured extract returns `1000` rows
+  - `tb_invoice` configured extract returns `2179` rows for those encounters
+  - `tb_treatment` configured extract returns `16842` rows for those encounters
+  - `tb_bed` configured extract returns `1528` rows
+  - `tb_department` configured extract returns `37` rows
+  - `tb_phacdodieutri` configured extract returns `23` rows
+  - `tb_phacdodieutri_phieudieutri` configured extract returns `127` rows
+  - local checks passed:
+    - `python3 -m py_compile dags/hdos_widget/*.py`
+    - `python3 -m json.tool dags/hdos_widget/hdos_widget_config.json`
+- Deployment verification for `hdos_widget`:
+  - runtime files pushed to `/home/ubuntu/daihai_script/hdos_widget/`
+  - DAG pushed to `/home/ubuntu/airflow/dags/hdos_widget.py`
+  - Airflow registration check passed:
+    - `/home/ubuntu/airflow-venv/bin/airflow dags list | grep hdos_widget`
+  - Airflow import error check passed:
+    - `/home/ubuntu/airflow-venv/bin/airflow dags list-import-errors`
+    - result: `No data found`
+- Runtime validation for `hdos_widget`:
+  - user confirmed on `2026-05-21` that the pipeline worked
+  - observed runtime behavior: Gold tasks are wired as same-level siblings after `bronze_to_silver`, but in the current Airflow environment they executed sequentially rather than in parallel
+  - the sibling Gold task shape still enables targeted replay by clearing one Gold task only
+
+**Risks**
+
+- The current development path uses a deterministic 1000-row sample query; full-table performance and edge cases are still unvalidated.
+- PostgreSQL-native `bytea` and `tsvector` fields may still require explicit cast/encoding logic at raw ingest time if Spark JDBC or Iceberg rejects them at runtime.
+- Bronze currently preserves the full wide table but does not yet add table-specific canonical casting beyond what JDBC already provides.
+- Gold outputs are first-pass marts based on source context and sample profiling; they may need adjustment after user review or richer hospital-table joins.
 
 ---
 
@@ -177,8 +362,8 @@ Keep the installer modular internally so later packaging/binary work can scale t
 - The first usable populated sample table chosen for the working DAG is `public.tb_nhanvienlog`.
 - `public.tb_cakhambenh_thoigian` was inspected earlier but returned `0` rows and was not used for the sample.
 - Local sample pipeline files exist under `dags/hdos_sample/`:
-  - `foxai_config.json`
-  - `foxai_config.py`
+  - `hdos_sample_config.json`
+  - `hdos_sample_config.py`
   - `postgres_to_raw.py`
   - `raw_to_bronze.py`
   - `bronze_to_silver.py`
